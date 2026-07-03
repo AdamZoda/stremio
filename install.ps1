@@ -93,22 +93,16 @@ if ($scriptsDir -and (Test-Path $scriptsDir)) {
     }
 }
 
-# ── Succès ──────────────────────────────────────
+# ── Lancement dans le terminal courant ──────────
 Write-Host ""
 Write-Host "  $(Color '╭────────────────────────────────────╮' '32')"
 Write-Host "  $(Color '│' '32')   $(Color '✔ StreeIO installé dans Downloads !' '92')  $(Color '│' '32')"
-Write-Host "  $(Color '│' '32')   $(Color "📁 $installDir" '90')  $(Color '│' '32')"
-Write-Host "  $(Color '│' '32')   $(Color 'Ouverture du terminal StreeIO...' '36')  $(Color '│' '32')"
+Write-Host "  $(Color '│' '32')   $(Color '🚀 Lancement...' '36')                      $(Color '│' '32')"
 Write-Host "  $(Color '╰────────────────────────────────────╯' '32')"
 Write-Host ""
 
 Start-Sleep -Seconds 1
 
-# ── Ouvrir un NOUVEAU terminal dans Downloads\streeio et lancer streeio ──
-# On utilise Set-Location dans la commande plutôt que -d (évite les erreurs de chemin)
-$launchCmd = "Set-Location '$installDir'; Clear-Host; python -m streeio"
-
-Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $launchCmd
-
-Write-Host "  $(Color '🚀 Terminal StreeIO ouvert dans Downloads\streeio !' '96')"
-Write-Host ""
+# Aller dans Downloads\streeio et lancer streeio dans le même terminal
+Set-Location $installDir
+python -m streeio
