@@ -7,10 +7,14 @@ $ESC = [char]27
 function Color($text, $code) { "$ESC[${code}m$text$ESC[0m" }
 
 function Run-WithSpinner {
-    param([string]$Label, [string]$SuccessLabel, [scriptblock]$Command)
+    param([string]$Label, [string]$SuccessLabel, [scriptblock]$Command, [object[]]$ArgumentList)
 
     # Lancer le job via Start-Job (subprocess réel, accès aux variables)
-    $job = Start-Job -ScriptBlock $Command
+    $job = if ($ArgumentList) {
+        Start-Job -ScriptBlock $Command -ArgumentList $ArgumentList
+    } else {
+        Start-Job -ScriptBlock $Command
+    }
 
     $frames = @("⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏")
     $i = 0
@@ -55,12 +59,16 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Host "  $(Color '✔' '32')  $(Color 'Python détecté' '32')"
 }
 
+# Capturer l'exécutable Python EXACT utilisé (évite les conflits multi-version)
+$pythonExe = (Get-Command python).Source
+
 # ── Étape 2 : Installation de StreeIO via pip ───
-# Pas de téléchargement manuel, pas de dossier — pip fait tout
+# On passe $pythonExe en argument pour que le job subprocess utilise le même Python
 Run-WithSpinner "Installation de StreeIO..." "StreeIO installé" {
-    python -m pip install --upgrade pip --quiet --no-warn-script-location 2>&1 | Out-Null
-    python -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall --quiet --no-warn-script-location 2>&1
-}
+    param($pyExe)
+    & $pyExe -m pip install --upgrade pip --quiet --no-warn-script-location 2>&1 | Out-Null
+    & $pyExe -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall --quiet --no-warn-script-location 2>&1
+} -ArgumentList $pythonExe
 
 # ── Étape 3 : PATH permanent ─────────────────────
 $scriptsDir = python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))" 2>$null
@@ -81,4 +89,5 @@ Write-Host ""
 
 Start-Sleep -Seconds 1
 
-python -m streeio
+# Utiliser le MÊME Python que celui qui a fait l'installation
+& $pythonExe -m streeio
