@@ -72,14 +72,16 @@ Spinner-Run "Téléchargement de StreeIO dans Downloads..." {
     Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
 } "Fichiers installés dans Downloads\streeio"
 
-# ── Étape 3 : pip + dépendances ─────────────────
-Spinner-Run "Mise à jour de pip..." {
+# ── Étape 3 : Installation locale de StreeIO et dépendances ──────
+Spinner-Run "Installation locale de StreeIO..." {
+    # On met à jour pip en premier
     python -m pip install --upgrade pip --quiet --no-warn-script-location 2>&1 | Out-Null
-} "pip à jour"
-
-Spinner-Run "Installation des dépendances (yt-dlp)..." {
-    python -m pip install yt-dlp --quiet --no-warn-script-location 2>&1 | Out-Null
-} "yt-dlp installé"
+    
+    # On se déplace dans le dossier d'installation pour installer le package localement
+    Push-Location $installDir
+    python -m pip install -e . --quiet --no-warn-script-location 2>&1 | Out-Null
+    Pop-Location
+} "StreeIO installé avec ses dépendances"
 
 # ── Étape 4 : PATH permanent ────────────────────
 $scriptsDir = python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))" 2>$null
@@ -103,6 +105,11 @@ Write-Host ""
 
 Start-Sleep -Seconds 1
 
-# Aller dans Downloads\streeio et lancer streeio dans le même terminal
-Set-Location $installDir
-python -m streeio
+# S'assurer que le répertoire d'installation existe avant de s'y déplacer
+if (Test-Path $installDir) {
+    Set-Location $installDir
+    python -m streeio
+} else {
+    Write-Host "❌ Erreur: Le dossier $installDir n'a pas pu être créé ou trouvé." -ForegroundColor Red
+}
+
