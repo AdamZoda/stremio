@@ -42,7 +42,7 @@ Write-Host "  $(Color '⠦' '36')  $(Color 'Téléchargement de CasaWyTub (casaw
 if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
 
 # Utiliser le nouveau lien MediaFire que vous allez créer pour casawytub.exe
-$mediafireUrl = "VOTRE_NOUVEAU_LIEN_MEDIAFIRE_ICI"
+$mediafireUrl = "https://www.mediafire.com/file/lr0sxvrofm4243f/casawytub.exe/file"
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
