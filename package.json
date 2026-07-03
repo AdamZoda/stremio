@@ -1,0 +1,16 @@
+{
+  "name": "streeio",
+  "version": "4.3.0",
+  "description": "StreamRip — Extracteur local YouTube → MP4 / MP3. Terminal UI premium.",
+  "bin": {
+    "streeio": "./bin/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AdamZoda/stremio.git"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "license": "MIT"
+}
