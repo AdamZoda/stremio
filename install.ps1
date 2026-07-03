@@ -38,13 +38,17 @@ if (-not (Test-Path $installDir)) {
 
 # ── Étape 2 : Téléchargement du binaire streeio.exe ──
 Spinner-Run "Téléchargement de StreeIO (streeio.exe)..." {
-    # URL de téléchargement direct pour les gros binaires sur GitHub
-    $url = "https://github.com/AdamZoda/stremio/raw/main/dist/streeio.exe"
+    # URL directe brute sur raw.githubusercontent
+    $url = "https://raw.githubusercontent.com/AdamZoda/stremio/main/dist/streeio.exe"
     
-    $webClient = New-Object System.Net.WebClient
-    $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
-    $webClient.DownloadFile($url, $exePath)
+    # Supprimer l'ancien fichier s'il existe et est cassé
+    if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
+
+    # Utiliser Invoke-WebRequest avec redirection automatique (Powershell gère nativement le SSL/TLS 1.2)
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $url -OutFile $exePath -UseBasicParsing -ErrorAction Stop
 } "Téléchargement terminé"
+
 
 
 # ── Étape 3 : Configuration du PATH permanent ──
