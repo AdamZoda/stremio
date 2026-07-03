@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────
-#  StreeIO — Installeur Premium
-#  Loader animé, pip silencieux, PATH permanent, lancement auto
+#  StreeIO — Installeur Premium v2.0
+#  Installe dans Downloads\streeio
+#  Ouvre un nouveau terminal et lance StreeIO auto
 # ─────────────────────────────────────────────
 
 $ESC = [char]27
@@ -24,14 +25,15 @@ function Spinner-Run {
 Clear-Host
 Write-Host ""
 Write-Host "  $(Color '╭────────────────────────────────────╮' '36')"
-Write-Host "  $(Color '│' '36')   $(Color 'STREEIO' '96') $(Color '— Installeur v1.0' '90')          $(Color '│' '36')"
+Write-Host "  $(Color '│' '36')   $(Color 'STREEIO' '96') $(Color '— Installeur v2.0' '90')          $(Color '│' '36')"
 Write-Host "  $(Color '╰────────────────────────────────────╯' '36')"
 Write-Host ""
 
-# ── Étape 1 : Python ────────────────────────────
-$hasPython = [bool](Get-Command python -ErrorAction SilentlyContinue)
+# ── Dossier d'installation ──────────────────────
+$installDir = "$env:USERPROFILE\Downloads\streeio"
 
-if (-not $hasPython) {
+# ── Étape 1 : Python ────────────────────────────
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Spinner-Run "Installation de Python 3.11..." {
         winget install Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
     } "Python 3.11 installé"
@@ -44,48 +46,73 @@ if (-not $hasPython) {
     Write-Host "  $(Color '✔' '32')  $(Color 'Python détecté' '32')"
 }
 
-# ── Étape 2 : pip ───────────────────────────────
+# ── Étape 2 : Téléchargement des fichiers ───────
+Spinner-Run "Téléchargement de StreeIO dans Downloads..." {
+    # Supprimer l'ancienne version si elle existe
+    if (Test-Path $installDir) {
+        Remove-Item $installDir -Recurse -Force 2>&1 | Out-Null
+    }
+    New-Item -ItemType Directory -Path $installDir -Force 2>&1 | Out-Null
+
+    # Télécharger le zip depuis GitHub
+    $zipPath = "$env:TEMP\streeio_download.zip"
+    $extractPath = "$env:TEMP\streeio_extract"
+
+    Invoke-WebRequest -Uri "https://github.com/AdamZoda/stremio/archive/refs/heads/main.zip" -OutFile $zipPath -UseBasicParsing
+
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+    # Copier le contenu dans Downloads\streeio
+    $extracted = Get-ChildItem $extractPath | Select-Object -First 1
+    Copy-Item -Path "$($extracted.FullName)\*" -Destination $installDir -Recurse -Force
+
+    # Nettoyer temp
+    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+} "Fichiers installés dans Downloads\streeio"
+
+# ── Étape 3 : pip + dépendances ─────────────────
 Spinner-Run "Mise à jour de pip..." {
     python -m pip install --upgrade pip --quiet --no-warn-script-location 2>&1 | Out-Null
 } "pip à jour"
 
-# ── Étape 3 : StreeIO ───────────────────────────
-Spinner-Run "Téléchargement de StreeIO..." {
-    python -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall --quiet --no-warn-script-location 2>&1 | Out-Null
-} "StreeIO installé"
+Spinner-Run "Installation des dépendances (yt-dlp)..." {
+    python -m pip install yt-dlp --quiet --no-warn-script-location 2>&1 | Out-Null
+} "yt-dlp installé"
 
 # ── Étape 4 : PATH permanent ────────────────────
-# Trouver le dossier Scripts de pip dynamiquement
-$scriptsDir = python -c "import site, os; scripts = site.getusersitepackages(); base = os.path.dirname(os.path.dirname(scripts)); print(os.path.join(base, 'Scripts'))" 2>$null
-
-if (-not $scriptsDir) {
-    # Fallback : chercher streeio.exe directement
-    $scriptsDir = python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))" 2>$null
-}
-
+$scriptsDir = python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))" 2>$null
 if ($scriptsDir -and (Test-Path $scriptsDir)) {
-    # Ajouter au PATH de la session courante
-    if ($env:Path -notlike "*$scriptsDir*") {
-        $env:Path = "$scriptsDir;$env:Path"
-    }
-    # Ajouter au PATH utilisateur permanent (fonctionne même après fermeture du terminal)
     $currentUserPath = [System.Environment]::GetEnvironmentVariable("Path","User")
     if ($currentUserPath -notlike "*$scriptsDir*") {
         [System.Environment]::SetEnvironmentVariable("Path", "$scriptsDir;$currentUserPath", "User")
-        Write-Host "  $(Color '✔' '32')  $(Color 'PATH mis à jour (permanent)' '32')"
+    }
+    if ($env:Path -notlike "*$scriptsDir*") {
+        $env:Path = "$scriptsDir;$env:Path"
     }
 }
 
-# ── Lancement ───────────────────────────────────
+# ── Succès ──────────────────────────────────────
 Write-Host ""
 Write-Host "  $(Color '╭────────────────────────────────────╮' '32')"
-Write-Host "  $(Color '│' '32')   $(Color '✔ Installation réussie !' '92')            $(Color '│' '32')"
-Write-Host "  $(Color '│' '32')   $(Color 'Lancement de StreeIO...' '36')           $(Color '│' '32')"
+Write-Host "  $(Color '│' '32')   $(Color '✔ StreeIO installé dans Downloads !' '92')  $(Color '│' '32')"
+Write-Host "  $(Color '│' '32')   $(Color "📁 $installDir" '90')  $(Color '│' '32')"
+Write-Host "  $(Color '│' '32')   $(Color 'Ouverture du terminal StreeIO...' '36')  $(Color '│' '32')"
 Write-Host "  $(Color '╰────────────────────────────────────╯' '32')"
 Write-Host ""
 
 Start-Sleep -Seconds 1
 
-# Lancer directement via python -m streeio (pas besoin du PATH pour ça)
-# Après ça, l'user peut taper 'streeio' depuis n'importe où car PATH est maintenant permanent
-python -m streeio
+# ── Ouvrir un NOUVEAU terminal dans Downloads\streeio et lancer streeio ──
+$launchCmd = "cd '$installDir'; Clear-Host; python -m streeio"
+
+# Essayer Windows Terminal (wt) en premier, sinon PowerShell classique
+if (Get-Command wt -ErrorAction SilentlyContinue) {
+    Start-Process wt -ArgumentList "new-tab", "--title", "StreeIO", "-d", $installDir, "powershell", "-NoExit", "-Command", "python -m streeio"
+} else {
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", $launchCmd
+}
+
+Write-Host "  $(Color '🚀 Terminal StreeIO ouvert dans Downloads\streeio !' '96')"
+Write-Host ""
