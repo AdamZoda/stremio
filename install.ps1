@@ -30,14 +30,10 @@ Write-Host "  $(Color '╰──────────────────
 Write-Host ""
 
 # ── Dossier d'installation ──────────────────────
-# On essaie d'abord de récupérer le vrai chemin de Downloads depuis le registre Windows
-$downloadsRegistry = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}" -ErrorAction SilentlyContinue
-if ($downloadsRegistry) {
-    $installDir = Join-Path $downloadsRegistry."{374DE290-123F-4565-9164-39C4925E467B}" "streeio"
-} else {
-    # Fallback sur la méthode standard ~
-    $installDir = "$HOME\Downloads\streeio"
-}
+# Pour éviter tous les problèmes avec OneDrive et les dossiers utilisateur spéciaux,
+# on installe directement dans un dossier dédié à la racine du disque C:
+$installDir = "C:\streeio"
+
 
 
 # ── Étape 1 : Python ────────────────────────────
