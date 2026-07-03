@@ -105,14 +105,10 @@ Write-Host ""
 Start-Sleep -Seconds 1
 
 # ── Ouvrir un NOUVEAU terminal dans Downloads\streeio et lancer streeio ──
-$launchCmd = "cd '$installDir'; Clear-Host; python -m streeio"
+# On utilise Set-Location dans la commande plutôt que -d (évite les erreurs de chemin)
+$launchCmd = "Set-Location '$installDir'; Clear-Host; python -m streeio"
 
-# Essayer Windows Terminal (wt) en premier, sinon PowerShell classique
-if (Get-Command wt -ErrorAction SilentlyContinue) {
-    Start-Process wt -ArgumentList "new-tab", "--title", "StreeIO", "-d", $installDir, "powershell", "-NoExit", "-Command", "python -m streeio"
-} else {
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", $launchCmd
-}
+Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $launchCmd
 
 Write-Host "  $(Color '🚀 Terminal StreeIO ouvert dans Downloads\streeio !' '96')"
 Write-Host ""
