@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streeio"
+version = "4.3.0"
+description = "StreamRip — Extracteur local YouTube → MP4 / MP3. Terminal UI premium."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{name = "stree.io"}]
+keywords = ["youtube", "download", "mp3", "mp4", "cli", "terminal"]
+
+dependencies = [
+    "yt-dlp>=2024.0.0",
+]
+
+[project.scripts]
+streeio = "streeio.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["streeio*"]
