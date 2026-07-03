@@ -37,20 +37,34 @@ if (-not (Test-Path $installDir)) {
 }
 
 # ── Étape 2 : Téléchargement du binaire streeio.exe ──
-Spinner-Run "Téléchargement de StreeIO (streeio.exe)..." {
-    # Supprimer l'ancien fichier s'il existe
-    if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
+Write-Host "  $(Color '⠦' '36')  $(Color 'Téléchargement de StreeIO (streeio.exe)...' '33')"
 
-    # Utiliser le CDN jsDelivr qui permet de servir les gros fichiers du dépôt sans restriction
-    $url = "https://cdn.jsdelivr.net/gh/AdamZoda/stremio@main/dist/streeio.exe"
+if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
+
+# Utiliser le lien MediaFire fourni par l'utilisateur
+$mediafireUrl = "https://www.mediafire.com/file/mifr8u4kylzepob/streeio.exe/file"
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# 1. Lire la page MediaFire
+$html = Invoke-WebRequest -Uri $mediafireUrl -UseBasicParsing
+
+# 2. Extraire le lien direct caché dans le bouton
+$directLinkMatch = [regex]::Match($html.Content, 'href="(https://download[0-9]+\.mediafire\.com/[^"]+)"')
+
+if ($directLinkMatch.Success) {
+    $directLink = $directLinkMatch.Groups[1].Value
     
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    
-    # Téléchargement via client Web standard
-    $webClient = New-Object System.Net.WebClient
-    $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
-    $webClient.DownloadFile($url, $exePath)
-} "Téléchargement terminé"
+    # 3. Télécharger le fichier via le lien direct (La barre de progression native s'affichera)
+    Invoke-WebRequest -Uri $directLink -OutFile $exePath -UseBasicParsing -ErrorAction Stop
+    Write-Host "  $(Color '✔' '32')  $(Color 'Téléchargement terminé avec succès !' '32')"
+} else {
+    Write-Host "❌ Erreur: Impossible d'extraire le lien direct MediaFire." -ForegroundColor Red
+    exit 1
+}
+
+
+
 
 
 
