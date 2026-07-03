@@ -38,16 +38,32 @@ if (-not (Test-Path $installDir)) {
 
 # ── Étape 2 : Téléchargement du binaire streeio.exe ──
 Spinner-Run "Téléchargement de StreeIO (streeio.exe)..." {
-    # URL directe brute sur raw.githubusercontent
-    $url = "https://raw.githubusercontent.com/AdamZoda/stremio/main/dist/streeio.exe"
-    
     # Supprimer l'ancien fichier s'il existe et est cassé
     if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
 
-    # Utiliser Invoke-WebRequest avec redirection automatique (Powershell gère nativement le SSL/TLS 1.2)
+    # On télécharge l'archive ZIP du dépôt qui contourne la limite des 10 Mo
+    $zipPath = "$env:TEMP\streeio_exe_dl.zip"
+    $extractPath = "$env:TEMP\streeio_exe_ext"
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue }
+
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $url -OutFile $exePath -UseBasicParsing -ErrorAction Stop
+    Invoke-WebRequest -Uri "https://github.com/AdamZoda/stremio/archive/refs/heads/main.zip" -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+
+    # Extraction
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+    # Récupérer l'exécutable depuis le dossier extrait dist/streeio.exe
+    $extractedExe = Get-ChildItem -Path $extractPath -Filter "streeio.exe" -Recurse | Select-Object -First 1
+    if ($extractedExe) {
+        Copy-Item -Path $extractedExe.FullName -Destination $exePath -Force
+    }
+
+    # Nettoyage
+    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
 } "Téléchargement terminé"
+
 
 
 
