@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CasaWyTub CLI v4.3.0
-Extracteur local YouTube → MP4 / MP3
+CasaWyTub CLI v4.4.0
+Extracteur local (YouTube, TikTok, Instagram) → MP4 / MP3
 Terminal UI inspirée de Claude Code
 Auto-installation des dépendances au premier lancement
 """
@@ -170,8 +170,8 @@ def draw_header():
         f"  │  ├─┤└─┐├─┤│││└┬┘ │ │ │├┴┐",
         f"  └─┘┴ ┴└─┘┴ ┴└┴┘ ┴  ┴ └─┘└─┘{C.RST}",
     ]
-    version = f"{C.GRAY}v4.3.0{C.RST}"
-    subtitle = f"{C.DIM}{C.WHITE}Extracteur Local YouTube → MP4 / MP3{C.RST}"
+    version = f"{C.GRAY}v4.4.0{C.RST}"
+    subtitle = f"{C.DIM}{C.WHITE}Extracteur Local (YouTube, TikTok, Instagram) → MP4 / MP3{C.RST}"
 
     print()
     for l in logo_lines:
@@ -619,7 +619,7 @@ def check_for_updates():
     import urllib.request
     import json
     
-    current_version = "4.3.0"
+    current_version = "4.4.0"
     url = "https://raw.githubusercontent.com/AdamZoda/stremio/main/version.json"
     
     try:
@@ -825,14 +825,32 @@ def run_download(url, mode, dl_folder):
                 'preferredquality': '320',
             }]
         })
+    elif mode == "video_original":
+        opts.update({
+            'format': 'bestvideo[vcodec^=avc]+bestaudio[ext=m4a]/best[vcodec^=avc]/bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+        })
+    elif mode == "video_720":
+        opts.update({
+            'format': 'bestvideo[vcodec^=avc][height<=720]+bestaudio[ext=m4a]/best[vcodec^=avc][height<=720]/bestvideo[height<=720]+bestaudio/best',
+            'merge_output_format': 'mp4',
+        })
     else:
         opts.update({
-            'format': 'bestvideo[height<=1080]+bestaudio/best',
+            'format': 'bestvideo[vcodec^=avc][height<=1080]+bestaudio[ext=m4a]/best[vcodec^=avc][height<=1080]/bestvideo[height<=1080]+bestaudio/best',
             'merge_output_format': 'mp4',
         })
 
-    draw_step("↓", f"Téléchargement {'Audio MP3 320kbps' if mode == 'audio' else 'Vidéo MP4 1080p'}",
-              color=C.MAGENTA)
+    if mode == 'audio':
+        label = 'Audio MP3 320kbps'
+    elif mode == 'video_original':
+        label = 'Vidéo MP4 (Qualité Originale)'
+    elif mode == 'video_720':
+        label = 'Vidéo MP4 720p'
+    else:
+        label = 'Vidéo MP4 1080p'
+
+    draw_step("↓", f"Téléchargement {label}", color=C.MAGENTA)
     print()
 
     try:
@@ -889,7 +907,7 @@ def interactive_download(initial_url=None):
         url = initial_url
         print(f"\n  {C.CYAN}›{C.RST}  {C.GRAY}URL détectée :{C.RST} {C.WHITE}{url}{C.RST}")
     else:
-        draw_step("1", "Collez l'URL de la vidéo")
+        draw_step("1", "Collez l'URL de la vidéo (YouTube, TikTok, Insta...)")
         url = prompt("URL")
 
     if not url:
@@ -907,14 +925,27 @@ def interactive_download(initial_url=None):
     draw_step("2", "Choisissez le format de sortie")
     print()
     draw_option("1", "🎵", "Audio MP3", "320 kbps — Musique, Podcasts")
-    draw_option("2", "🎬", "Vidéo MP4", "1080p HD — Clips, Tutoriels")
+    draw_option("2", "🎬", "Vidéo MP4 (1080p)", "Format standard H.264 (Compatible PC/Mobile)")
+    draw_option("3", "🌟", "Vidéo MP4 (Original)", "Qualité maximale sans limite de taille")
+    draw_option("4", "📱", "Vidéo MP4 (720p)", "Taille réduite, téléchargement rapide")
     print()
 
     choice = prompt("Votre choix", default="2")
-    mode = "audio" if choice == "1" else "video"
+    
+    if choice == "1":
+        mode = "audio"
+        fmt_label = f"{C.MAGENTA}Audio MP3 320kbps{C.RST}"
+    elif choice == "3":
+        mode = "video_original"
+        fmt_label = f"{C.CYAN}Vidéo MP4 (Original){C.RST}"
+    elif choice == "4":
+        mode = "video_720"
+        fmt_label = f"{C.CYAN}Vidéo MP4 (720p){C.RST}"
+    else:
+        mode = "video_1080"
+        fmt_label = f"{C.CYAN}Vidéo MP4 (1080p){C.RST}"
 
     # ── Étape 3 : Confirmation ──
-    fmt_label = f"{C.MAGENTA}Audio MP3 320kbps{C.RST}" if mode == "audio" else f"{C.CYAN}Vidéo MP4 1080p{C.RST}"
     print()
     draw_divider("─", C.DARK)
     draw_info(f"Format : {fmt_label}")
@@ -991,11 +1022,15 @@ def oneshot():
     dl_folder = show_welcome()
 
     # Détection du mode via flags
-    mode = "video"
+    mode = "video_1080"
     if "--audio" in sys.argv or "-a" in sys.argv or "--mp3" in sys.argv:
         mode = "audio"
     elif "--video" in sys.argv or "-v" in sys.argv or "--mp4" in sys.argv:
-        mode = "video"
+        mode = "video_1080"
+    elif "--original" in sys.argv:
+        mode = "video_original"
+    elif "--720p" in sys.argv:
+        mode = "video_720"
 
     info = fetch_info(url)
     if not info:
@@ -1032,7 +1067,7 @@ def main():
             print()
             sys.exit(0)
         elif arg in ("--version", "-V"):
-            print(f"{C.CYAN}CasaWyTub{C.RST} {C.GRAY}v4.3.0{C.RST}")
+            print(f"{C.CYAN}CasaWyTub{C.RST} {C.GRAY}v4.4.0{C.RST}")
             sys.exit(0)
         elif is_url(arg):
             oneshot()
