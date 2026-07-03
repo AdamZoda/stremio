@@ -1,42 +1,92 @@
 #!/bin/bash
-set -e
+# ─────────────────────────────────────────────
+#  StreeIO — Installeur Premium (macOS / Linux)
+#  Loader animé, pip silencieux, lancement auto
+# ─────────────────────────────────────────────
 
-echo -e "\033[36m🚀 Installation de StreeIO...\033[0m"
+RED='\033[0;91m'; GREEN='\033[0;92m'; CYAN='\033[0;96m'
+YELLOW='\033[0;93m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 
-# 1. Vérification de Python
-if ! command -v python3 &> /dev/null; then
-    echo -e "\033[31m❌ Python3 n'est pas détecté. Tentative d'installation...\033[0m"
-    if command -v brew &> /dev/null; then
-        brew install python3
-    elif command -v apt-get &> /dev/null; then
-        sudo apt-get update && sudo apt-get install -y python3 python3-pip git
+spinner_run() {
+    local label="$1"
+    local success="$2"
+    shift 2
+    local cmd=("$@")
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local i=0
+
+    "${cmd[@]}" > /tmp/streeio_install.log 2>&1 &
+    local pid=$!
+
+    while kill -0 $pid 2>/dev/null; do
+        local frame="${frames[$((i % 10))]}"
+        printf "\r  ${CYAN}${frame}${NC}  ${YELLOW}${label}${NC}   "
+        sleep 0.08
+        ((i++))
+    done
+
+    wait $pid
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        printf "\r  ${GREEN}✔${NC}  ${GREEN}${success}${NC}        \n"
     else
-        echo -e "\033[31m❌ Impossible d'installer Python automatiquement. Installez python3 et pip manuellement.\033[0m"
+        printf "\r  ${RED}✖${NC}  ${RED}Échec : ${label}${NC}\n"
+        cat /tmp/streeio_install.log
         exit 1
     fi
+}
+
+# ── Header ──────────────────────────────────────
+clear
+echo ""
+echo -e "  ${CYAN}╭────────────────────────────────────╮${NC}"
+echo -e "  ${CYAN}│${NC}   ${BOLD}STREEIO${NC} ${DIM}— Installeur v1.0${NC}          ${CYAN}│${NC}"
+echo -e "  ${CYAN}╰────────────────────────────────────╯${NC}"
+echo ""
+
+# ── Étape 1 : Python ────────────────────────────
+if command -v python3 &>/dev/null; then
+    echo -e "  ${GREEN}✔${NC}  ${GREEN}Python détecté${NC}"
+    PYTHON=python3
+elif command -v python &>/dev/null; then
+    echo -e "  ${GREEN}✔${NC}  ${GREEN}Python détecté${NC}"
+    PYTHON=python
+else
+    if command -v brew &>/dev/null; then
+        spinner_run "Installation de Python..." "Python installé" brew install python3
+    elif command -v apt-get &>/dev/null; then
+        spinner_run "Installation de Python..." "Python installé" sudo apt-get install -y python3 python3-pip git
+    else
+        echo -e "  ${RED}✖  Python introuvable. Installez-le : https://python.org${NC}"
+        exit 1
+    fi
+    PYTHON=python3
 fi
 
-# 2. Installation de StreeIO
-echo -e "\033[33m📦 Téléchargement et installation de StreeIO depuis GitHub...\033[0m"
-python3 -m pip install --upgrade pip
-python3 -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall
+# ── Étape 2 : pip ───────────────────────────────
+spinner_run "Mise à jour de pip..." "pip à jour" \
+    $PYTHON -m pip install --upgrade pip --quiet --no-warn-script-location
 
-# 3. Vérification finale & Lancement automatique
-if command -v streeio &> /dev/null; then
-    echo -e "\033[32m\n✅ StreeIO a été installé avec succès !\033[0m"
-    echo -e "\033[36m🚀 Lancement de StreeIO...\033[0m"
-    sleep 1
+# ── Étape 3 : StreeIO ───────────────────────────
+spinner_run "Téléchargement de StreeIO..." "StreeIO installé" \
+    $PYTHON -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall --quiet --no-warn-script-location
+
+# ── Rafraîchir PATH ─────────────────────────────
+export PATH="$HOME/.local/bin:$PATH"
+
+# ── Lancement ───────────────────────────────────
+echo ""
+echo -e "  ${GREEN}╭────────────────────────────────────╮${NC}"
+echo -e "  ${GREEN}│${NC}   ${GREEN}✔ Installation réussie !${NC}            ${GREEN}│${NC}"
+echo -e "  ${GREEN}│${NC}   ${CYAN}Lancement de StreeIO...${NC}           ${GREEN}│${NC}"
+echo -e "  ${GREEN}╰────────────────────────────────────╯${NC}"
+echo ""
+
+sleep 1
+
+if command -v streeio &>/dev/null; then
     streeio
 else
-    # Refresh PATH and retry
-    export PATH="$HOME/.local/bin:$PATH"
-    if command -v streeio &> /dev/null; then
-        echo -e "\033[32m\n✅ StreeIO a été installé avec succès !\033[0m"
-        echo -e "\033[36m🚀 Lancement de StreeIO...\033[0m"
-        sleep 1
-        streeio
-    else
-        echo -e "\033[33m\n⚠ Installation terminée. Ajoutez ~/.local/bin à votre PATH.\033[0m"
-        echo -e "\033[31m❌ Ouvrez un nouveau terminal et tapez : streeio\033[0m"
-    fi
+    echo -e "  ${YELLOW}⚠  Ouvrez un nouveau terminal et tapez : streeio${NC}"
 fi
