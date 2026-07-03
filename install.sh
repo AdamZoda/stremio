@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────
-#  StreeIO — Installeur Premium (macOS / Linux)
+#  CasaWyTub — Installeur Premium (macOS / Linux)
 #  Loader animé, pip silencieux, lancement auto
 # ─────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ spinner_run() {
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local i=0
 
-    "${cmd[@]}" > /tmp/streeio_install.log 2>&1 &
+    "${cmd[@]}" > /tmp/casawytub_install.log 2>&1 &
     local pid=$!
 
     while kill -0 $pid 2>/dev/null; do
@@ -32,7 +32,7 @@ spinner_run() {
         printf "\r  ${GREEN}✔${NC}  ${GREEN}${success}${NC}        \n"
     else
         printf "\r  ${RED}✖${NC}  ${RED}Échec : ${label}${NC}\n"
-        cat /tmp/streeio_install.log
+        cat /tmp/casawytub_install.log
         exit 1
     fi
 }
@@ -41,7 +41,7 @@ spinner_run() {
 clear
 echo ""
 echo -e "  ${CYAN}╭────────────────────────────────────╮${NC}"
-echo -e "  ${CYAN}│${NC}   ${BOLD}STREEIO${NC} ${DIM}— Installeur v1.0${NC}          ${CYAN}│${NC}"
+echo -e "  ${CYAN}│${NC}   ${BOLD}CASAWYTUB${NC} ${DIM}— Installeur v1.0${NC}          ${CYAN}│${NC}"
 echo -e "  ${CYAN}╰────────────────────────────────────╯${NC}"
 echo ""
 
@@ -68,8 +68,8 @@ fi
 spinner_run "Mise à jour de pip..." "pip à jour" \
     $PYTHON -m pip install --upgrade pip --quiet --no-warn-script-location
 
-# ── Étape 3 : StreeIO ───────────────────────────
-spinner_run "Téléchargement de StreeIO..." "StreeIO installé" \
+# ── Étape 3 : CasaWyTub ───────────────────────────
+spinner_run "Téléchargement de CasaWyTub..." "CasaWyTub installé" \
     $PYTHON -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall --quiet --no-warn-script-location
 
 # ── Rafraîchir PATH ─────────────────────────────
@@ -79,11 +79,11 @@ export PATH="$HOME/.local/bin:$PATH"
 echo ""
 echo -e "  ${GREEN}╭────────────────────────────────────╮${NC}"
 echo -e "  ${GREEN}│${NC}   ${GREEN}✔ Installation réussie !${NC}            ${GREEN}│${NC}"
-echo -e "  ${GREEN}│${NC}   ${CYAN}Lancement de StreeIO...${NC}           ${GREEN}│${NC}"
+echo -e "  ${GREEN}│${NC}   ${CYAN}Lancement de CasaWyTub...${NC}           ${GREEN}│${NC}"
 echo -e "  ${GREEN}╰────────────────────────────────────╯${NC}"
 echo ""
 
 sleep 1
 
-# Lancer via python -m streeio (fonctionne toujours, pas besoin que streeio soit dans PATH)
-$PYTHON -m streeio
+# Lancer via python -m casawytub (fonctionne toujours, pas besoin que casawytub soit dans PATH)
+$PYTHON -m casawytub

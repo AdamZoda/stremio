@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────
-#  StreeIO — Installeur Exécutable (Sans Python)
-#  Télécharge le binaire streeio.exe et le configure
+#  CasaWyTub — Installeur Exécutable (Sans Python)
+#  Télécharge le binaire casawytub.exe et le configure
 # ─────────────────────────────────────────────
 
 $ESC = [char]27
@@ -24,25 +24,25 @@ function Spinner-Run {
 Clear-Host
 Write-Host ""
 Write-Host "  $(Color '╭────────────────────────────────────╮' '36')"
-Write-Host "  $(Color '│' '36')   $(Color 'STREEIO' '96') $(Color '— Installeur Exe' '90')          $(Color '│' '36')"
+Write-Host "  $(Color '│' '36')   $(Color 'CASAWYTUB' '96') $(Color '— Installeur Exe' '90')          $(Color '│' '36')"
 Write-Host "  $(Color '╰────────────────────────────────────╯' '36')"
 Write-Host ""
 
-$installDir = "C:\streeio"
-$exePath = "$installDir\streeio.exe"
+$installDir = "C:\casawytub"
+$exePath = "$installDir\casawytub.exe"
 
 # ── Étape 1 : Création du dossier de destination ──
 if (-not (Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force 2>&1 | Out-Null
 }
 
-# ── Étape 2 : Téléchargement du binaire streeio.exe ──
-Write-Host "  $(Color '⠦' '36')  $(Color 'Téléchargement de StreeIO (streeio.exe)...' '33')"
+# ── Étape 2 : Téléchargement du binaire casawytub.exe ──
+Write-Host "  $(Color '⠦' '36')  $(Color 'Téléchargement de CasaWyTub (casawytub.exe)...' '33')"
 
 if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
 
-# Utiliser le lien MediaFire fourni par l'utilisateur
-$mediafireUrl = "https://www.mediafire.com/file/mifr8u4kylzepob/streeio.exe/file"
+# Utiliser le nouveau lien MediaFire que vous allez créer pour casawytub.exe
+$mediafireUrl = "VOTRE_NOUVEAU_LIEN_MEDIAFIRE_ICI"
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -85,7 +85,7 @@ if ($installDir -and (Test-Path $installDir)) {
 # ── Lancement ───────────────────────────────────
 Write-Host ""
 Write-Host "  $(Color '╭────────────────────────────────────╮' '32')"
-Write-Host "  $(Color '│' '32')   $(Color '✔ StreeIO configuré avec succès !' '92')  $(Color '│' '32')"
+Write-Host "  $(Color '│' '32')   $(Color '✔ CasaWyTub configuré avec succès !' '92')  $(Color '│' '32')"
 Write-Host "  $(Color '│' '32')   $(Color '🚀 Lancement de l''application...' '36')    $(Color '│' '32')"
 Write-Host "  $(Color '╰────────────────────────────────────╯' '32')"
 Write-Host ""
