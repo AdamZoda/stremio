@@ -41,16 +41,17 @@ Spinner-Run "Téléchargement de StreeIO (streeio.exe)..." {
     # Supprimer l'ancien fichier s'il existe
     if (Test-Path $exePath) { Remove-Item $exePath -Force -ErrorAction SilentlyContinue }
 
-    # Utiliser le lien permanent de redirection vers le dernier binaire dans GitHub Releases
-    $url = "https://github.com/AdamZoda/stremio/releases/latest/download/streeio.exe"
+    # Utiliser le CDN jsDelivr qui permet de servir les gros fichiers du dépôt sans restriction
+    $url = "https://cdn.jsdelivr.net/gh/AdamZoda/stremio@main/dist/streeio.exe"
     
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     
-    # Utilisation d'un client Web robuste avec redirection automatique activée
+    # Téléchargement via client Web standard
     $webClient = New-Object System.Net.WebClient
     $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
     $webClient.DownloadFile($url, $exePath)
 } "Téléchargement terminé"
+
 
 
 
