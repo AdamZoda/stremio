@@ -38,13 +38,14 @@ if (-not (Test-Path $installDir)) {
 
 # ── Étape 2 : Téléchargement du binaire streeio.exe ──
 Spinner-Run "Téléchargement de StreeIO (streeio.exe)..." {
-    # URL directe vers le fichier brut du dépôt
-    $url = "https://raw.githubusercontent.com/AdamZoda/stremio/main/dist/streeio.exe"
+    # URL de téléchargement direct pour les gros binaires sur GitHub
+    $url = "https://github.com/AdamZoda/stremio/raw/main/dist/streeio.exe"
     
     $webClient = New-Object System.Net.WebClient
     $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
     $webClient.DownloadFile($url, $exePath)
 } "Téléchargement terminé"
+
 
 # ── Étape 3 : Configuration du PATH permanent ──
 if ($installDir -and (Test-Path $installDir)) {
