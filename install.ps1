@@ -55,30 +55,40 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
 }
 
 # ── Étape 2 : Téléchargement des fichiers ───────
-Spinner-Run "Téléchargement de StreeIO dans Downloads..." {
-    # Supprimer l'ancienne version si elle existe
-    if (Test-Path $installDir) {
-        Remove-Item $installDir -Recurse -Force 2>&1 | Out-Null
+Spinner-Run "Téléchargement de StreeIO..." {
+    # 1. Forcer la création du dossier de destination absolue
+    if (-not (Test-Path $installDir)) {
+        New-Item -ItemType Directory -Path $installDir -Force 2>&1 | Out-Null
     }
-    New-Item -ItemType Directory -Path $installDir -Force 2>&1 | Out-Null
 
-    # Télécharger le zip depuis GitHub
+    # 2. Télécharger le ZIP depuis GitHub
     $zipPath = "$env:TEMP\streeio_download.zip"
     $extractPath = "$env:TEMP\streeio_extract"
 
-    Invoke-WebRequest -Uri "https://github.com/AdamZoda/stremio/archive/refs/heads/main.zip" -OutFile $zipPath -UseBasicParsing
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue }
 
-    if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    # Utilisation d'un User-Agent pour éviter le blocage GitHub
+    $webClient = New-Object System.Net.WebClient
+    $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
+    $webClient.DownloadFile("https://github.com/AdamZoda/stremio/archive/refs/heads/main.zip", $zipPath)
+
+    # 3. Extraction dans un dossier temporaire
     Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
-    # Copier le contenu dans Downloads\streeio
-    $extracted = Get-ChildItem $extractPath | Select-Object -First 1
-    Copy-Item -Path "$($extracted.FullName)\*" -Destination $installDir -Recurse -Force
+    # 4. Copier proprement les fichiers extraits vers $installDir
+    $subFolder = Get-ChildItem $extractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+    if ($subFolder) {
+        # Nettoyer d'abord pour éviter des conflits
+        Remove-Item "$installDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "$($subFolder.FullName)\*" -Destination $installDir -Recurse -Force
+    }
 
-    # Nettoyer temp
+    # 5. Nettoyer les fichiers temporaires
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
     Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
-} "Fichiers installés dans Downloads\streeio"
+} "Fichiers installés dans $installDir"
+
 
 # ── Étape 3 : Installation locale de StreeIO et dépendances ──────
 Spinner-Run "Installation locale de StreeIO..." {
