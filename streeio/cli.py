@@ -614,6 +614,87 @@ def get_download_folder():
     return home
 
 
+def check_for_updates():
+    """Vérifie si une mise à jour est requise ou disponible depuis GitHub."""
+    import urllib.request
+    import json
+    
+    current_version = "4.3.0"
+    url = "https://raw.githubusercontent.com/AdamZoda/stremio/main/version.json"
+    
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            
+        latest = data.get("latest_version", current_version)
+        min_ver = data.get("min_version", current_version)
+        status = data.get("status", "active")
+        msg = data.get("message", "")
+        
+        # 1. Désactivation à distance (Kill Switch)
+        if status == "disabled" or status == "deprecated":
+            print()
+            draw_box(
+                [
+                    f"{C.RED}{C.BOLD}Cette application a été temporairement désactivée.{C.RST}",
+                    f"",
+                    f"{C.WHITE}{msg}{C.RST}" if msg else f"{C.GRAY}Veuillez contacter l'administrateur.{C.RST}"
+                ],
+                title="Service Suspendu",
+                border_color=C.RED
+            )
+            print()
+            sys.exit(1)
+            
+        # 2. Comparaison de version
+        def parse_ver(v):
+            return [int(x) for x in re.sub(r'[^\d.]', '', v).split('.')]
+            
+        try:
+            if parse_ver(current_version) < parse_ver(min_ver):
+                print()
+                draw_box(
+                    [
+                        f"{C.RED}{C.BOLD}Mise à jour obligatoire requise !{C.RST}",
+                        f"",
+                        f"{C.GRAY}Votre version actuelle : {C.RED}{current_version}{C.RST}",
+                        f"{C.GRAY}Version minimale requise : {C.GREEN}{min_ver}{C.RST}",
+                        f"",
+                        f"{C.WHITE}{msg if msg else 'Veuillez mettre à jour pour continuer.'}{C.RST}"
+                    ],
+                    title="Mise à jour requise",
+                    border_color=C.RED
+                )
+                print()
+                sys.exit(1)
+        except Exception:
+            pass
+            
+        # 3. Notification de mise à jour disponible
+        try:
+            if parse_ver(current_version) < parse_ver(latest):
+                print()
+                draw_box(
+                    [
+                        f"{C.YELLOW}{C.BOLD}Une mise à jour de StreeIO est disponible ! ({latest}){C.RST}",
+                        f"",
+                        f"{C.GRAY}Version actuelle : {current_version}{C.RST}",
+                        f"",
+                        f"{C.WHITE}Mettez à jour avec : {C.CYAN}pip install --upgrade git+https://github.com/AdamZoda/stremio.git{C.RST}"
+                    ],
+                    title="Mise à jour disponible",
+                    border_color=C.YELLOW
+                )
+                print()
+        except Exception:
+            pass
+            
+    except Exception:
+        # Si hors-ligne ou erreur, on continue
+        pass
+
+
 def show_welcome():
     """Écran d'accueil complet avec auto-setup."""
     clear_screen()
@@ -623,6 +704,9 @@ def show_welcome():
     # ── Auto-installation si nécessaire ──
     if not first_launch_setup():
         sys.exit(1)
+
+    # ── Vérification des mises à jour à distance ──
+    check_for_updates()
 
     # ── Affichage de l'environnement ──
     dl_folder = get_download_folder()
