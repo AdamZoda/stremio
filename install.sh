@@ -21,11 +21,22 @@ echo -e "\033[33m📦 Téléchargement et installation de StreeIO depuis GitHub.
 python3 -m pip install --upgrade pip
 python3 -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall
 
-# 3. Vérification finale
+# 3. Vérification finale & Lancement automatique
 if command -v streeio &> /dev/null; then
     echo -e "\033[32m\n✅ StreeIO a été installé avec succès !\033[0m"
-    echo -e "\033[36m👉 Tapez simplement : streeio\033[0m"
+    echo -e "\033[36m🚀 Lancement de StreeIO...\033[0m"
+    sleep 1
+    streeio
 else
-    echo -e "\033[33m\n⚠ Installation terminée, mais le chemin d'exécution n'est pas mis à jour dans le PATH.\033[0m"
-    echo -e "\033[36m👉 Redémarrez votre terminal, puis tapez : streeio\033[0m"
+    # Refresh PATH and retry
+    export PATH="$HOME/.local/bin:$PATH"
+    if command -v streeio &> /dev/null; then
+        echo -e "\033[32m\n✅ StreeIO a été installé avec succès !\033[0m"
+        echo -e "\033[36m🚀 Lancement de StreeIO...\033[0m"
+        sleep 1
+        streeio
+    else
+        echo -e "\033[33m\n⚠ Installation terminée. Ajoutez ~/.local/bin à votre PATH.\033[0m"
+        echo -e "\033[31m❌ Ouvrez un nouveau terminal et tapez : streeio\033[0m"
+    fi
 fi

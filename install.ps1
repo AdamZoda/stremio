@@ -16,11 +16,20 @@ Write-Host "📦 Téléchargement et installation de StreeIO depuis GitHub..." -
 python -m pip install --upgrade pip
 python -m pip install git+https://github.com/AdamZoda/stremio.git --force-reinstall
 
-# 3. Vérification finale
+# 3. Vérification finale & Lancement automatique
 if (Get-Command streeio -ErrorAction SilentlyContinue) {
     Write-Host "`n✅ StreeIO a été installé avec succès !" -ForegroundColor Green
-    Write-Host "👉 Ouvrez un nouveau terminal et tapez : streeio" -ForegroundColor Cyan
+    Write-Host "🚀 Lancement de StreeIO..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 1
+    streeio
 } else {
-    Write-Host "`n⚠ Installation terminée, mais les variables d'environnement ne sont pas à jour." -ForegroundColor Yellow
-    Write-Host "👉 Veuillez fermer et rouvrir votre terminal, puis tapez : streeio" -ForegroundColor Cyan
+    Write-Host "`n⚠ Installation terminée, rafraîchissement du PATH..." -ForegroundColor Yellow
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (Get-Command streeio -ErrorAction SilentlyContinue) {
+        Write-Host "🚀 Lancement de StreeIO..." -ForegroundColor Cyan
+        Start-Sleep -Seconds 1
+        streeio
+    } else {
+        Write-Host "❌ Ouvrez un nouveau terminal et tapez : streeio" -ForegroundColor Red
+    }
 }
