@@ -83,8 +83,8 @@ Write-Host ""
 
 Start-Sleep -Seconds 1
 
-if (Get-Command streeio -ErrorAction SilentlyContinue) {
-    streeio
-} else {
-    Write-Host "  $(Color '⚠  Ouvrez un nouveau terminal et tapez : streeio' '93')"
-}
+# Rafraîchir PATH au cas où
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# Lancer via python -m streeio (fonctionne toujours, pas besoin que streeio soit dans PATH)
+python -m streeio

@@ -85,8 +85,5 @@ echo ""
 
 sleep 1
 
-if command -v streeio &>/dev/null; then
-    streeio
-else
-    echo -e "  ${YELLOW}⚠  Ouvrez un nouveau terminal et tapez : streeio${NC}"
-fi
+# Lancer via python -m streeio (fonctionne toujours, pas besoin que streeio soit dans PATH)
+$PYTHON -m streeio
