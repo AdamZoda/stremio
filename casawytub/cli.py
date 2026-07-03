@@ -727,18 +727,227 @@ def show_welcome():
     return dl_folder
 
 
-def fetch_info(url):
-    """Récupère les métadonnées de la vidéo."""
-    import yt_dlp
+def is_instagram_url(url):
+    """Vérifie si une URL est un lien Instagram."""
+    return bool(re.search(r'(instagram\.com|instagr\.am)', url, re.IGNORECASE))
 
-    spinner = Spinner("Récupération des métadonnées...", color=C.BLUE)
-    spinner.start()
 
+def extract_instagram_shortcode(url):
+    """Extrait le shortcode d'une URL Instagram."""
+    match = re.search(r'/(p|reel|reels|tv)/([A-Za-z0-9_-]+)', url)
+    if match:
+        return match.group(2)
+    return None
+
+
+def try_instagram_no_login(url):
+    """
+    Tente de récupérer la vidéo Instagram SANS connexion,
+    en utilisant des instances publiques de Cobalt (via cobalt.directory).
+    """
+    import urllib.request
+    import json
+
+    shortcode = extract_instagram_shortcode(url)
+    if not shortcode:
+        return None, None, None
+
+    # Instances de secours en dur au cas où l'API cobalt.directory est inaccessible
+    instances = [
+        "https://api.cobalt.liubquanti.click/",
+        "https://dog.kittycat.boo/",
+        "https://rue-cobalt.xenon.zone/",
+        "https://cobaltapi.kittycat.boo/",
+        "https://cobaltapi.cjs.nz/"
+    ]
+
+    # Essayer de récupérer des instances à jour via cobalt.directory API
+    try:
+        req = urllib.request.Request("https://cobalt.directory/api/tests", headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        })
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            res = json.loads(resp.read().decode('utf-8'))
+            fetched_instances = []
+            for inst in res.get('data', []):
+                api = inst.get('api')
+                turnstile = inst.get('turnstile')
+                tests = inst.get('tests', {})
+                ig_test = tests.get('instagram', {})
+                # Si l'instance supporte Instagram, est fonctionnelle et sans Turnstile/captchas
+                if ig_test.get('status') == True and turnstile == False and api:
+                    api_url = api if api.startswith("http") else f"https://{api}/"
+                    fetched_instances.append(api_url)
+            
+            if fetched_instances:
+                # Placer les nouvelles instances au début de la liste
+                instances = fetched_instances + [inst for inst in instances if inst not in fetched_instances]
+    except Exception:
+        # Silencieusement ignorer les erreurs de l'API cobalt.directory
+        pass
+
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    }
+
+    payload = json.dumps({
+        "url": url,
+    }).encode('utf-8')
+
+    for api_url in instances:
+        try:
+            req = urllib.request.Request(api_url, data=payload, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                res = json.loads(resp.read().decode('utf-8'))
+                
+                # Cobalt retourne soit 'redirect' (url directe), soit 'stream' (url de flux)
+                video_url = res.get('url')
+                if video_url:
+                    title = res.get('filename', f"instagram_{shortcode}.mp4")
+                    # Enlever l'extension si présente dans le titre
+                    if title.endswith('.mp4'):
+                        title = title[:-4]
+                    return video_url, title, 'Instagram'
+        except Exception:
+            continue
+
+    return None, None, None
+
+
+def download_instagram_direct(video_url, title, dl_folder):
+    """Télécharge une vidéo Instagram depuis une URL directe."""
+    import urllib.request
+
+    # Nettoyer le titre pour le nom de fichier
+    safe_title = re.sub(r'[<>:"/\\|?*\n\r]', '', title or 'instagram_video')
+    safe_title = safe_title[:80].strip()
+    if not safe_title:
+        safe_title = 'instagram_video'
+    filepath = dl_folder / f"{safe_title}.mp4"
+
+    # Éviter l'écrasement
+    counter = 1
+    while filepath.exists():
+        filepath = dl_folder / f"{safe_title} ({counter}).mp4"
+        counter += 1
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    }
+
+    req = urllib.request.Request(video_url, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            total = int(resp.headers.get('Content-Length', 0))
+            downloaded = 0
+            chunk_size = 65536
+            bar_width = term_width() - 40
+
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+
+                    if total > 0:
+                        pct = downloaded / total
+                        filled = int(bar_width * pct)
+                        empty = bar_width - filled
+                        bar = f"{C.CYAN}{'█' * filled}{C.DARK}{'░' * empty}{C.RST}"
+                        dl_mb = downloaded / (1024 * 1024)
+                        tot_mb = total / (1024 * 1024)
+                        sys.stdout.write(f"\r  {bar}  {C.WHITE}{C.BOLD}{pct*100:5.1f}%{C.RST}  {C.GRAY}{dl_mb:.1f}/{tot_mb:.1f} MB{C.RST}  ")
+                        sys.stdout.flush()
+
+            # Ligne finale
+            if total > 0:
+                mb = total / (1024 * 1024)
+                sys.stdout.write(f"\r{' ' * term_width()}\r")
+                print(f"  {C.GREEN}{'█' * bar_width}{C.RST}  {C.GREEN}{C.BOLD}100.0%{C.RST}  {C.GRAY}{mb:.1f} MB{C.RST}  {C.GREEN}✔{C.RST}")
+
+    except Exception as e:
+        if filepath.exists():
+            filepath.unlink()
+        raise e
+
+    return filepath
+
+
+def get_common_opts(url):
+    """Retourne les options communes yt-dlp."""
     opts = {
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
     }
+    return opts
+
+
+def fetch_info(url):
+    """Récupère les métadonnées de la vidéo."""
+    import yt_dlp
+
+    is_insta = is_instagram_url(url)
+
+    # ── Instagram : méthode sans login ──
+    if is_insta:
+        spinner = Spinner("Récupération des métadonnées Instagram (sans login)...", color=C.BLUE)
+        spinner.start()
+
+        video_url, title, uploader = try_instagram_no_login(url)
+        if video_url:
+            spinner.stop(success=True, message="Métadonnées Instagram récupérées (sans login)")
+            # Retourner un dict compatible avec le reste du code
+            return {
+                'title': title or 'Instagram Video',
+                'uploader': uploader or 'Instagram',
+                'channel': uploader or 'Instagram',
+                'duration': 0,
+                'view_count': 0,
+                '_instagram_direct_url': video_url,  # Flag spécial
+            }
+        else:
+            spinner.stop(success=False, message="Impossible de récupérer sans login, tentative avec yt-dlp...")
+
+            # Fallback: essayer yt-dlp sans cookies
+            spinner2 = Spinner("Tentative avec yt-dlp (sans cookies)...", color=C.YELLOW)
+            spinner2.start()
+            opts = get_common_opts(url)
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                spinner2.stop(success=True, message="Métadonnées récupérées via yt-dlp")
+                return info
+            except Exception as e:
+                spinner2.stop(success=False, message=f"Erreur : {e}")
+                print()
+                draw_box(
+                    [
+                        f"{C.YELLOW}{C.BOLD}Impossible de télécharger cette vidéo Instagram.{C.RST}",
+                        f"",
+                        f"{C.WHITE}Causes possibles :{C.RST}",
+                        f"  {C.CYAN}•{C.RST} {C.GRAY}Le compte est privé{C.RST}",
+                        f"  {C.CYAN}•{C.RST} {C.GRAY}Instagram bloque temporairement les requêtes{C.RST}",
+                        f"  {C.CYAN}•{C.RST} {C.GRAY}L'URL est invalide ou expirée{C.RST}",
+                        f"",
+                        f"{C.WHITE}Réessayez dans quelques minutes.{C.RST}",
+                    ],
+                    title="Aide Instagram",
+                    border_color=C.YELLOW,
+                )
+                print()
+                return None
+
+    # ── YouTube, TikTok et autres : méthode standard ──
+    spinner = Spinner("Récupération des métadonnées...", color=C.BLUE)
+    spinner.start()
+
+    opts = get_common_opts(url)
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -797,19 +1006,132 @@ def display_video_info(info):
     draw_box(lines, title="Vidéo trouvée", border_color=C.CYAN)
 
 
-def run_download(url, mode, dl_folder):
+def check_video_codec(filepath):
+    """Vérifie le codec vidéo d'un fichier avec ffprobe."""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+             '-show_entries', 'stream=codec_name', '-of', 'csv=p=0',
+             str(filepath)],
+            capture_output=True, text=True, timeout=15
+        )
+        return result.stdout.strip().lower()
+    except Exception:
+        return "unknown"
+
+
+def ensure_h264_compat(filepath):
+    """
+    Si le fichier est encodé en HEVC (H.265), le re-encode en H.264
+    pour garantir la compatibilité avec tous les lecteurs (Windows, etc.).
+    Retourne le chemin du fichier final.
+    """
+    filepath = Path(filepath)
+    if not filepath.exists():
+        return filepath
+
+    codec = check_video_codec(filepath)
+    if codec not in ('hevc', 'h265', 'hev1'):
+        return filepath
+
+    # Le fichier est HEVC → re-encoder en H.264
+    spinner = Spinner("Conversion HEVC → H.264 (compatibilité Windows)...", color=C.YELLOW)
+    spinner.start()
+
+    temp_path = filepath.with_name(filepath.stem + '_h264_tmp.mp4')
+
+    try:
+        cmd = [
+            'ffmpeg', '-y', '-i', str(filepath),
+            '-c:v', 'libx264', '-preset', 'fast', '-crf', '18',
+            '-c:a', 'aac', '-b:a', '192k',
+            '-movflags', '+faststart',
+            str(temp_path)
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+        if result.returncode == 0 and temp_path.exists() and temp_path.stat().st_size > 0:
+            filepath.unlink()
+            temp_path.rename(filepath)
+            spinner.stop(success=True, message="Conversion H.264 terminée ✔")
+        else:
+            spinner.stop(success=False, message="Échec de la conversion, fichier HEVC conservé")
+            if temp_path.exists():
+                temp_path.unlink()
+    except Exception as e:
+        spinner.stop(success=False, message=f"Conversion impossible : {e}")
+        if temp_path.exists():
+            temp_path.unlink()
+
+    return filepath
+
+
+def run_download(url, mode, dl_folder, info=None):
     """Lance le téléchargement avec barre de progression."""
     import yt_dlp
 
-    progress = ProgressDisplay()
+    # ── Cas spécial Instagram (téléchargement direct sans login) ──
+    if info and info.get('_instagram_direct_url'):
+        direct_url = info['_instagram_direct_url']
+        title = info.get('title', 'instagram_video')
 
-    opts = {
+        if mode == "audio":
+            label = 'Audio MP3 320kbps'
+        else:
+            label = 'Vidéo MP4 Instagram'
+
+        draw_step("↓", f"Téléchargement {label}", color=C.MAGENTA)
+        print()
+
+        try:
+            filepath = download_instagram_direct(direct_url, title, dl_folder)
+
+            # Si mode audio, convertir en MP3
+            if mode == "audio" and filepath.exists():
+                spinner = Spinner("Conversion en MP3...", color=C.CYAN)
+                spinner.start()
+                mp3_path = filepath.with_suffix('.mp3')
+                try:
+                    cmd = [
+                        'ffmpeg', '-y', '-i', str(filepath),
+                        '-vn', '-acodec', 'libmp3lame', '-ab', '320k',
+                        str(mp3_path)
+                    ]
+                    result = subprocess.run(cmd, capture_output=True, timeout=300)
+                    if result.returncode == 0 and mp3_path.exists():
+                        filepath.unlink()
+                        filepath = mp3_path
+                        spinner.stop(success=True, message="Conversion MP3 terminée")
+                    else:
+                        spinner.stop(success=False, message="Échec conversion MP3, vidéo conservée")
+                except Exception:
+                    spinner.stop(success=False, message="Échec conversion MP3")
+            else:
+                # Vérifier le codec et convertir si HEVC
+                if filepath.exists():
+                    ensure_h264_compat(filepath)
+
+            draw_success(f"Fichier sauvegardé dans : {dl_folder}")
+            return True
+
+        except Exception as e:
+            draw_error(str(e))
+            return False
+
+    # ── Cas standard (YouTube, TikTok, etc.) ──
+    progress = ProgressDisplay()
+    downloaded_filepath = [None]
+
+    def combined_hook(d):
+        progress.hook(d)
+        if d['status'] == 'finished':
+            downloaded_filepath[0] = d.get('filename') or d.get('info_dict', {}).get('_filename')
+
+    opts = get_common_opts(url)
+    opts.update({
         'outtmpl': str(dl_folder / '%(title)s.%(ext)s'),
-        'noplaylist': True,
-        'quiet': True,
-        'no_warnings': True,
-        'progress_hooks': [progress.hook],
-    }
+        'progress_hooks': [combined_hook],
+    })
 
     local_dir = get_local_bin_dir()
     ext = ".exe" if sys.platform == "win32" else ""
@@ -856,6 +1178,17 @@ def run_download(url, mode, dl_folder):
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             ydl.download([url])
+
+        # ── Conversion H.264 si nécessaire (HEVC → H.264) ──
+        if mode != "audio" and downloaded_filepath[0]:
+            final_path = Path(downloaded_filepath[0])
+            # Si le merge a changé l'extension, chercher le .mp4
+            if not final_path.exists():
+                mp4_path = final_path.with_suffix('.mp4')
+                if mp4_path.exists():
+                    final_path = mp4_path
+            if final_path.exists():
+                ensure_h264_compat(final_path)
 
         draw_success(f"Fichier sauvegardé dans : {dl_folder}")
 
@@ -958,7 +1291,7 @@ def interactive_download(initial_url=None):
         return
 
     # ── Étape 4 : Téléchargement ──
-    run_download(url, mode, dl_folder)
+    run_download(url, mode, dl_folder, info=info)
 
 
 def is_url(text):
@@ -1037,7 +1370,7 @@ def oneshot():
         sys.exit(1)
 
     display_video_info(info)
-    run_download(url, mode, dl_folder)
+    run_download(url, mode, dl_folder, info=info)
     print()
 
 
